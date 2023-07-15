@@ -33,7 +33,15 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 		List<Movie> movies = new ArrayList<>();
 
 		PreparedStatement movieQuery = connection.prepareStatement(
-				"SELECT tconst, title, year, genres FROM tmovies WHERE title LIKE ? ORDER BY title ASC, year ASC;");
+				"SELECT tconst, title, year, genres, ARRAY_AGG(primaryname) as actors " +
+						"FROM tmovies LEFT OUTER JOIN (" +
+							"SELECT tconst AS ptconst, nconst AS pnconst, category " +
+							"FROM tprincipals " +
+							"WHERE category = 'actor' OR category = 'actress'" +
+						") AS tp ON tconst = ptconst LEFT OUTER JOIN nbasics ON nconst = pnconst " +
+						"WHERE title LIKE ? " +
+						"GROUP BY tconst, title, year, genres " +
+						"ORDER BY title ASC, year ASC;");
 		movieQuery.setString(1, "%"+keywords+"%");
 
 		ResultSet rs = movieQuery.executeQuery();
@@ -43,7 +51,15 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 			String    title = rs.getString("title");
 			int        year = rs.getInt("year");
 			String[] genres = (String[])rs.getArray("genres").getArray();
-			movies.add(new Movie(tconst, title, year, new HashSet<>(List.of(genres))));
+			String[] actors = (String[])rs.getArray("actors").getArray();
+			Movie mov = new Movie(tconst, title, year, new HashSet<>(List.of(genres)));
+			Arrays.sort(actors);
+			for (String s : actors) {
+				if (s != null) {
+					mov.actorNames.add(s);
+				}
+			}
+			movies.add(mov);
 		}
 
 		return movies;
