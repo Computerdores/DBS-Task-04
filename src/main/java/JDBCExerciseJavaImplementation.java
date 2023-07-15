@@ -122,7 +122,7 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 
 			while (allMovies.next())
 			{
-				PreparedStatement getAllCoActors = connection.prepareStatement("SELECT primaryname FROM nbasics NATURAL JOIN tprincipals WHERE tconst = ?;");
+				PreparedStatement getAllCoActors = connection.prepareStatement("SELECT primaryname FROM nbasics NATURAL JOIN tprincipals WHERE tconst = ? AND (category = 'actor' OR category = 'actress');");
 				getAllCoActors.setString(1, allMovies.getString("tconst"));
 				ResultSet allActorsFromMovies = getAllCoActors.executeQuery();
 
