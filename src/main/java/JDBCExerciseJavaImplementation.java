@@ -114,47 +114,44 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 				actor.playedIn.add(result.getString("title"));
 			}
 
+			//////// RETRIEVE MOST PLAYED WITH ////////
+
 			PreparedStatement coStarAllMoviesQuery = connection.prepareStatement("SELECT tconst FROM tprincipals WHERE nconst = ? AND (category = 'actor' OR category = 'actress');");
 			coStarAllMoviesQuery.setString(1, actor.nConst);
 			ResultSet allMovies = coStarAllMoviesQuery.executeQuery();
 
 			List<ActorCounter> playedWith = new ArrayList<ActorCounter>();
 
-			while (allMovies.next())
+			while (allMovies.next())//for all movies the actor played in
 			{
 				PreparedStatement getAllCoActors = connection.prepareStatement("SELECT primaryname FROM nbasics NATURAL JOIN tprincipals WHERE tconst = ? AND (category = 'actor' OR category = 'actress');");
 				getAllCoActors.setString(1, allMovies.getString("tconst"));
 				ResultSet allActorsFromMovies = getAllCoActors.executeQuery();
 
-				while(allActorsFromMovies.next())
+				while(allActorsFromMovies.next())//for all actors who played in that movie
 				{
-					String name = allActorsFromMovies.getString("primaryname");
+					String coName = allActorsFromMovies.getString("primaryname");
 					boolean contained = false;
-					int index = 0;
 
-					for(ActorCounter ac : playedWith)
+					for(ActorCounter ac : playedWith)//for all actors that are already being counted
 					{
-						if (ac.name == name)
+						if (ac.name == coName)
 						{
-							index = playedWith.indexOf(ac);
+							ac.increaseCount();
 							contained = true;
 							break;
 						}
 					}
 
-					if(contained)
+					if(!contained)
 					{
-						playedWith.get(index).increaseCount();
+						playedWith.add(new ActorCounter(coName));
 					}
-					else
-					{
-						playedWith.add(new ActorCounter(name));
-					}
-
 				}
 			}
 
 			playedWith.sort(ActorCounter::compareTo);
+			playedWith.get(0).increaseCount();
 
 			for(ActorCounter ac : playedWith)
 			{
@@ -163,9 +160,6 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 
 
 		}
-
-
-
 
 		return actors;
 	}
