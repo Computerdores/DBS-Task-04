@@ -73,18 +73,20 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 	}
 
 	@Override
-	public List<Actor> queryActors(@NotNull Connection connection, @NotNull String keywords) throws SQLException
-	{
+	public List<Actor> queryActors(@NotNull Connection connection, @NotNull String keywords) throws SQLException {
 		//////// RETRIEVE ACTORS ////////
-		PreparedStatement actorQuery =
-				connection.prepareStatement("SELECT " +
-						"nconst, primaryname " +
-						"FROM tprincipals NATURAL JOIN nbasics " +
-						"WHERE (category = 'actor' OR category = 'actress') AND ARRAY_LENGTH(knownfortitles, 1) > 0 " +
-						"AND primaryname LIKE ? " +
-						"GROUP BY nconst, primaryname, knownfortitles " +
-						"ORDER BY ARRAY_LENGTH(knownfortitles, 1) DESC, primaryname ASC " +
-						"LIMIT 5;");
+		PreparedStatement actorQuery = connection.prepareStatement("""
+			WITH unsorted AS (
+				SELECT nconst, primaryname, ARRAY_AGG(tconst) AS movies
+				FROM tprincipals NATURAL JOIN nbasics
+				WHERE (category = 'actor' OR category = 'actress') AND primaryname LIKE ?
+				GROUP BY nconst, primaryname
+			)
+			SELECT nconst, primaryname, ARRAY_LENGTH(movies, 1) AS movie_count
+			FROM unsorted
+			ORDER BY movie_count DESC, primaryname ASC
+			LIMIT 5;
+		""");
 		actorQuery.setString(1, "%"+keywords+"%");
 		ResultSet result = actorQuery.executeQuery();
 
@@ -104,7 +106,13 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 
 		for(Actor actor : actors)
 		{
-			PreparedStatement movieQuery = connection.prepareStatement("SELECT title FROM tprincipals NATURAL JOIN tmovies WHERE nconst = ? AND (category = 'actor' OR category = 'actress') AND year > 0 ORDER BY year DESC, title ASC LIMIT 5;");
+			PreparedStatement movieQuery = connection.prepareStatement("""
+				SELECT title
+				FROM tprincipals NATURAL JOIN tmovies
+				WHERE nconst = ? AND (category = 'actor' OR category = 'actress') AND year > 0
+				ORDER BY year DESC, title ASC
+				LIMIT 5;
+			""");
 
 			movieQuery.setString(1, actor.nConst);
 			result = movieQuery.executeQuery();
