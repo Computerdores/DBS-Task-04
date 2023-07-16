@@ -15,7 +15,7 @@ public class ActorCounter implements Comparable
 
     // returns n < 0 if ac has greater count OR equal count but lower name, n > 0 if reversed
     //therefore sorts by count DESC, and within one count, name ASC
-    public int compareTo(@NotNull ActorCounter ac)
+    public int compareToActor(@NotNull ActorCounter ac)
     {
         if(this.count != ac.count)
         {

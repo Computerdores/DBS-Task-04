@@ -122,36 +122,46 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 
 			List<ActorCounter> playedWith = new ArrayList<ActorCounter>();
 
+			int accountedMovies = 0;
+
 			while (allMovies.next())//for all movies the actor played in
 			{
+				accountedMovies++;
+
 				PreparedStatement getAllCoActors = connection.prepareStatement("SELECT primaryname FROM nbasics NATURAL JOIN tprincipals WHERE tconst = ? AND (category = 'actor' OR category = 'actress');");
 				getAllCoActors.setString(1, allMovies.getString("tconst"));
 				ResultSet allActorsFromMovies = getAllCoActors.executeQuery();
 
+				int accountedActors = 0;
+
 				while(allActorsFromMovies.next())//for all actors who played in that movie
 				{
+					accountedActors++;
 					String coName = allActorsFromMovies.getString("primaryname");
 					boolean contained = false;
 
 					for(ActorCounter ac : playedWith)//for all actors that are already being counted
 					{
-						if (ac.name == coName)
+						if (ac.name == coName)//actor is contained
 						{
 							ac.increaseCount();
 							contained = true;
+							System.out.printf(coName + ": " + ac.count);
 							break;
 						}
 					}
 
-					if(!contained)
+					if(!contained)//actor is not contained
 					{
 						playedWith.add(new ActorCounter(coName));
 					}
 				}
 			}
 
-			playedWith.sort(ActorCounter::compareTo);
-			playedWith.get(0).increaseCount();
+			playedWith.get(0).count = accountedMovies;
+
+			playedWith.sort(ActorCounter::compareToActor);
+
 
 			for(ActorCounter ac : playedWith)
 			{
