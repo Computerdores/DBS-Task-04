@@ -69,6 +69,8 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 			movies.add(mov);
 		}
 
+		movieQuery.close();
+
 		return movies;
 	}
 
@@ -102,82 +104,54 @@ public class JDBCExerciseJavaImplementation implements JDBCExercise {
 			actors.add(actor);
 		}
 
+		actorQuery.close();
+
 		//////// RETRIEVE RECENT MOVIES FOR EACH ACTOR ////////
 
-		for(Actor actor : actors)
-		{
-			PreparedStatement movieQuery = connection.prepareStatement("""
+		PreparedStatement movieQuery = connection.prepareStatement("""
 				SELECT title
 				FROM tprincipals NATURAL JOIN tmovies
 				WHERE nconst = ? AND (category = 'actor' OR category = 'actress') AND year > 0
 				ORDER BY year DESC, title ASC
 				LIMIT 5;
-			""");
+		""");
 
+		PreparedStatement costarQuery = connection.prepareStatement("""
+				WITH all_movies AS (
+					SELECT tconst
+					FROM tprincipals
+					WHERE nconst = ? AND (category = 'actor' OR category = 'actress')
+				)
+				
+				SELECT primaryname, COUNT(*) AS mov_count
+				FROM all_movies NATURAL JOIN tprincipals NATURAL JOIN nbasics NATURAL JOIN tmovies
+				WHERE nconst != ? AND (category = 'actor' OR category = 'actress')
+				GROUP BY nconst, primaryname
+				ORDER BY mov_count DESC, primaryname ASC
+				LIMIT 5;
+		""");
+
+		for(Actor actor : actors) {
 			movieQuery.setString(1, actor.nConst);
 			result = movieQuery.executeQuery();
 
-			while (result.next())
-			{
+			while (result.next()) {
 				actor.playedIn.add(result.getString("title"));
 			}
 
 			//////// RETRIEVE MOST PLAYED WITH ////////
 
-			PreparedStatement coStarAllMoviesQuery = connection.prepareStatement("SELECT tconst FROM tprincipals WHERE nconst = ? AND (category = 'actor' OR category = 'actress');");
-			coStarAllMoviesQuery.setString(1, actor.nConst);
-			ResultSet allMovies = coStarAllMoviesQuery.executeQuery();
+			costarQuery.setString(1, actor.nConst);
+			costarQuery.setString(2, actor.nConst);
+			result = costarQuery.executeQuery();
 
-			List<ActorCounter> playedWith = new ArrayList<ActorCounter>();
-
-			int accountedMovies = 0;
-
-			while (allMovies.next())//for all movies the actor played in
-			{
-				accountedMovies++;
-
-				PreparedStatement getAllCoActors = connection.prepareStatement("SELECT primaryname FROM nbasics NATURAL JOIN tprincipals WHERE tconst = ? AND (category = 'actor' OR category = 'actress');");
-				getAllCoActors.setString(1, allMovies.getString("tconst"));
-				ResultSet allActorsFromMovies = getAllCoActors.executeQuery();
-
-				int accountedActors = 0;
-
-				while(allActorsFromMovies.next())//for all actors who played in that movie
-				{
-					accountedActors++;
-					String coName = allActorsFromMovies.getString("primaryname");
-					boolean contained = false;
-
-					for(ActorCounter ac : playedWith)//for all actors that are already being counted
-					{
-						if (ac.name == coName)//actor is contained
-						{
-							ac.increaseCount();
-							contained = true;
-							System.out.printf(coName + ": " + ac.count);
-							break;
-						}
-					}
-
-					if(!contained)//actor is not contained
-					{
-						playedWith.add(new ActorCounter(coName));
-					}
-				}
+			while (result.next()) {
+				actor.costarNameToCount.put(result.getString("primaryname"), result.getInt("mov_count"));
 			}
-
-			playedWith.get(0).count = accountedMovies;
-
-			playedWith.sort(ActorCounter::compareToActor);
-
-
-			for(ActorCounter ac : playedWith)
-			{
-				actor.costarNameToCount.put(ac.name, ac.count);
-			}
-
-
 		}
+
+		movieQuery.close();
+		costarQuery.close();
 
 		return actors;
 	}
