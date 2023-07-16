@@ -2,7 +2,6 @@ import de.hpi.dbs1.ChosenImplementation;
 import de.hpi.dbs1.ConnectionConfig;
 import de.hpi.dbs1.JDBCExercise;
 import de.hpi.dbs1.entities.Actor;
-import de.hpi.dbs1.entities.ActorCounter;
 import de.hpi.dbs1.entities.Movie;
 import org.jetbrains.annotations.NotNull;
 
